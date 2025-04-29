@@ -1,18 +1,15 @@
-import type {Metadata} from 'next';
-import {Geist, Geist_Mono} from 'next/font/google';
+
+import type { Metadata } from 'next';
+import { Inter } from 'next/font/google'; // Use Inter as a fallback
 import './globals.css';
-import {ThemeProvider} from '@/components/theme-provider';
-import {Toaster} from '@/components/ui/toaster';
+import { ThemeProvider } from '@/components/theme-provider';
+import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider
 
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-});
+// Use Inter font. We keep the Geist variable names for potential future use if Geist is installed.
+const geistSansFont = Inter({ subsets: ['latin'], variable: '--font-geist-sans' });
+const geistMonoFont = Inter({ subsets: ['latin'], variable: '--font-geist-mono' });
 
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-});
 
 export const metadata: Metadata = {
   title: 'TaskFlow',
@@ -26,17 +23,22 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+      <body
+        className={`${geistSansFont.variable} ${geistMonoFont.variable} font-sans antialiased`} // Use font-sans utility
+      >
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
         >
-          {children}
-          <Toaster />
+          <AuthProvider> {/* Wrap children with AuthProvider */}
+            {children}
+            <Toaster />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
   );
 }
+
