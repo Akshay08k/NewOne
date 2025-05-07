@@ -1,15 +1,18 @@
+"use client";
 
-'use client';
-
-import * as React from 'react';
-import { SidebarProvider, Sidebar, SidebarInset } from '@/components/ui/sidebar';
-import { Header } from '@/components/header';
-import { TaskList } from '@/components/task-list';
-import { CreateTask } from '@/components/create-task';
-import { SidebarContent } from '@/components/sidebar-content';
-import { useAuth } from '@/context/auth-context';
-import { useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import * as React from "react";
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarInset,
+} from "@/components/ui/sidebar";
+import { Header } from "@/components/header";
+import { TaskList } from "@/components/task-list";
+import { CreateTask } from "@/components/create-task";
+import { SidebarContent } from "@/components/sidebar-content";
+import { useAuth } from "@/context/auth-context";
+import { useRouter } from "next/navigation";
+import { Loader2 } from "lucide-react";
 
 export default function TasksPage() {
   const { user, loading } = useAuth();
@@ -17,7 +20,7 @@ export default function TasksPage() {
 
   React.useEffect(() => {
     if (!loading && !user) {
-      router.push('/login');
+      router.push("/login");
     }
   }, [user, loading, router]);
 
@@ -38,7 +41,9 @@ export default function TasksPage() {
         <div className="flex flex-col h-screen">
           <Header />
           <main className="flex-1 overflow-y-auto p-6 space-y-6">
-            <h1 className="text-3xl font-semibold text-foreground mb-6">All Tasks</h1>
+            <h1 className="text-3xl font-semibold text-foreground mb-6">
+              All Tasks
+            </h1>
             <CreateTask />
             {/* Display all tasks here. TaskList component can be reused or a new one created */}
             <TaskList />

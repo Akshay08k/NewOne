@@ -102,7 +102,7 @@ export default function LoginPage() {
         });
         router.push("/");
       } else {
-        console.log("Not in allowed domain for google sign in");
+        console.error("Google Login Failed");
       }
     } catch (error) {
       // Error handling is mostly done within loginWithGoogle

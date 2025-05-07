@@ -1,10 +1,9 @@
-
 "use client";
 
 import * as React from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
 import { z } from "zod";
+import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -14,6 +13,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -59,7 +59,6 @@ interface TaskData {
   createdAt: Timestamp; // Added createdAt
 }
 
-
 export function CreateTask() {
   const { user } = useAuth(); // Get user from auth context
   const { toast } = useToast();
@@ -76,166 +75,181 @@ export function CreateTask() {
     },
   });
 
- async function onSubmit(data: TaskFormValues) {
+  async function onSubmit(data: TaskFormValues) {
     if (!user) {
-        toast({ title: "Not Authenticated", description: "You must be logged in to create tasks.", variant: "destructive"});
-        return;
+      toast({
+        title: "Not Authenticated",
+        description: "You must be logged in to create tasks.",
+        variant: "destructive",
+      });
+      return;
     }
 
     setIsSubmitting(true);
 
-     // Prepare data for Firestore
+    // Prepare data for Firestore
     const taskData: TaskData = {
-        ...data,
-        deadline: data.deadline ? Timestamp.fromDate(data.deadline) : undefined, // Convert Date to Timestamp
-        completed: false, // Default completed status
-        userId: user.uid, // Associate task with the logged-in user
-        createdAt: Timestamp.now(), // Set creation timestamp
+      ...data,
+      deadline: data.deadline ? Timestamp.fromDate(data.deadline) : undefined, // Convert Date to Timestamp
+      completed: false, // Default completed status
+      userId: user.uid, // Associate task with the logged-in user
+      createdAt: Timestamp.now(), // Set creation timestamp
     };
 
     // Remove undefined fields before saving to Firestore
-    Object.keys(taskData).forEach(key => {
-        if (taskData[key as keyof TaskData] === undefined) {
-            delete taskData[key as keyof TaskData];
-        }
+    Object.keys(taskData).forEach((key) => {
+      if (taskData[key as keyof TaskData] === undefined) {
+        delete taskData[key as keyof TaskData];
+      }
     });
 
-
     try {
-        const tasksColRef = collection(db, "tasks");
-        await addDoc(tasksColRef, taskData); // Add document to 'tasks' collection
+      const tasksColRef = collection(db, "tasks");
+      await addDoc(tasksColRef, taskData); // Add document to 'tasks' collection
 
-        toast({
-            title: "Task Created",
-            description: `Task "${data.title}" has been added.`,
-        });
-        form.reset(); // Reset form fields
-        setIsOpen(false); // Close the popover
+      toast({
+        title: "Task Created",
+        description: `Task "${data.title}" has been added.`,
+      });
+      form.reset(); // Reset form fields
+      setIsOpen(false); // Close the popover
     } catch (error) {
-        console.error("Error adding task: ", error);
-         toast({
-            title: "Error",
-            description: "Could not create task. Please try again.",
-            variant: "destructive",
-        });
+      console.error("Error adding task: ", error);
+      toast({
+        title: "Error",
+        description: "Could not create task. Please try again.",
+        variant: "destructive",
+      });
     } finally {
-        setIsSubmitting(false); // Reset loading state
+      setIsSubmitting(false); // Reset loading state
     }
   }
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
       <PopoverTrigger asChild>
-        <Button variant="default" disabled={!user || isSubmitting}> {/* Disable if not logged in */}
+        <Button variant="default" disabled={!user || isSubmitting}>
+          {" "}
+          {/* Disable if not logged in */}
           <Plus className="mr-2 h-4 w-4" /> Add New Task
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80">
-        { user ? ( // Only show form if user is logged in
-            <Form {...form}>
+        {user ? ( // Only show form if user is logged in
+          <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
+              <FormField
                 control={form.control}
                 name="title"
                 render={({ field }) => (
-                    <FormItem>
+                  <FormItem>
                     <FormLabel>Task Title</FormLabel>
                     <FormControl>
-                        <Input placeholder="Enter task title" {...field} disabled={isSubmitting} />
+                      <Input
+                        placeholder="Enter task title"
+                        {...field}
+                        disabled={isSubmitting}
+                      />
                     </FormControl>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
-                <FormField
+              />
+              <FormField
                 control={form.control}
                 name="description"
                 render={({ field }) => (
-                    <FormItem>
+                  <FormItem>
                     <FormLabel>Description (Optional)</FormLabel>
                     <FormControl>
-                        <Textarea placeholder="Enter task description" {...field} disabled={isSubmitting} />
+                      <Textarea
+                        placeholder="Enter task description"
+                        {...field}
+                        disabled={isSubmitting}
+                      />
                     </FormControl>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
-                <FormField
+              />
+              <FormField
                 control={form.control}
                 name="priority"
                 render={({ field }) => (
-                    <FormItem>
+                  <FormItem>
                     <FormLabel>Priority</FormLabel>
                     <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        disabled={isSubmitting}
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                      disabled={isSubmitting}
                     >
-                        <FormControl>
+                      <FormControl>
                         <SelectTrigger>
-                            <SelectValue placeholder="Select priority" />
+                          <SelectValue placeholder="Select priority" />
                         </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
+                      </FormControl>
+                      <SelectContent>
                         <SelectItem value="low">Low</SelectItem>
                         <SelectItem value="medium">Medium</SelectItem>
                         <SelectItem value="high">High</SelectItem>
-                        </SelectContent>
+                      </SelectContent>
                     </Select>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
-                <FormField
+              />
+              <FormField
                 control={form.control}
                 name="deadline"
                 render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                  <FormItem className="flex flex-col">
                     <FormLabel>Deadline (Optional)</FormLabel>
                     <Popover>
-                        <PopoverTrigger asChild>
+                      <PopoverTrigger asChild>
                         <FormControl>
-                            <Button
+                          <Button
                             variant={"outline"}
                             className={cn(
-                                "w-full justify-start text-left font-normal",
-                                !field.value && "text-muted-foreground"
+                              "w-full justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
                             )}
-                             disabled={isSubmitting}
-                            >
+                            disabled={isSubmitting}
+                          >
                             <CalendarIcon className="mr-2 h-4 w-4" />
                             {field.value ? (
-                                format(field.value, "PPP")
+                              format(field.value, "PPP")
                             ) : (
-                                <span>Pick a date</span>
+                              <span>Pick a date</span>
                             )}
-                            </Button>
+                          </Button>
                         </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            initialFocus
-                            disabled={isSubmitting}
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          initialFocus
+                          disabled={isSubmitting}
                         />
-                        </PopoverContent>
+                      </PopoverContent>
                     </Popover>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
-                <Button type="submit" className="w-full" disabled={isSubmitting}>
-                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              />
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : null}
                 Add Task
-                </Button>
+              </Button>
             </form>
-            </Form>
+          </Form>
         ) : (
-             <div className="text-center text-muted-foreground p-4">
-                Please log in to create tasks.
-            </div>
+          <div className="text-center text-muted-foreground p-4">
+            Please log in to create tasks.
+          </div>
         )}
       </PopoverContent>
     </Popover>
