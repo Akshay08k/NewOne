@@ -34,7 +34,6 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase/config"; // Import db instance
 import { toast, useToast } from "@/hooks/use-toast";
-// Assuming Task interface is simixlar to the one in task-list.tsx
 interface Task {
   id: string;
   title: string;
@@ -43,6 +42,7 @@ interface Task {
   deadline?: Date;
   completed: boolean;
   reminder?: Date;
+  notified?: boolean; 
 }
 
 // Mock tasks data - replace with actual data fetching

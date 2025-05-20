@@ -37,7 +37,6 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {" "}
             {/* Wrap children with AuthProvider */}
             {children}
             <Analytics />

@@ -65,6 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.error("Google sign-in error:", error);
       // Handle specific errors like popup closed by user, etc.
       if ((error as any).code === "auth/popup-closed-by-user") {
+        console.log("Google Sign-in popup closed by user.");
         // Optionally show a toast message
         toast({
           title: "Sign-in Failed",
@@ -82,7 +83,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const value = { user, loading, logout, loginWithGoogle };
 
-  // Render loading spinner while auth state is being determined
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">

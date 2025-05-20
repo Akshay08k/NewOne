@@ -43,6 +43,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
   deadline: z.date().optional(), // Keep as date for picker, convert before saving
+  notified: z.boolean().default(false),
 });
 
 type TaskFormValues = z.infer<typeof formSchema>;
@@ -57,6 +58,7 @@ interface TaskData {
   reminder?: Timestamp; // Reminder not in form, added for consistency
   userId: string; // Added userId
   createdAt: Timestamp; // Added createdAt
+  notified?: boolean;
 }
 
 export function CreateTask() {
@@ -72,6 +74,7 @@ export function CreateTask() {
       description: "",
       priority: "medium",
       deadline: undefined,
+      notified: false,
     },
   });
 

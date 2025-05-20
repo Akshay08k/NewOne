@@ -77,6 +77,7 @@ interface Task {
   reminder?: Timestamp; // Use Firestore Timestamp
   userId: string; // To associate tasks with users
   createdAt: Timestamp; // Track creation time
+  notified?: boolean;
 }
 
 export function TaskList() {
