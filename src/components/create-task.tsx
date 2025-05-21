@@ -48,24 +48,23 @@ const formSchema = z.object({
 
 type TaskFormValues = z.infer<typeof formSchema>;
 
-// Define the structure for Firestore document (excluding id)
 interface TaskData {
   title: string;
   description?: string;
   priority: "low" | "medium" | "high";
-  deadline?: Timestamp; // Use Timestamp for Firestore
+  deadline?: Timestamp;
   completed: boolean;
-  reminder?: Timestamp; // Reminder not in form, added for consistency
-  userId: string; // Added userId
-  createdAt: Timestamp; // Added createdAt
+  reminder?: Timestamp;
+  userId: string;
+  createdAt: Timestamp;
   notified?: boolean;
 }
 
 export function CreateTask() {
-  const { user } = useAuth(); // Get user from auth context
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isOpen, setIsOpen] = React.useState(false);
-  const [isSubmitting, setIsSubmitting] = React.useState(false); // Loading state
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(formSchema),
@@ -90,13 +89,12 @@ export function CreateTask() {
 
     setIsSubmitting(true);
 
-    // Prepare data for Firestore
     const taskData: TaskData = {
       ...data,
       deadline: data.deadline ? Timestamp.fromDate(data.deadline) : undefined, // Convert Date to Timestamp
-      completed: false, // Default completed status
-      userId: user.uid, // Associate task with the logged-in user
-      createdAt: Timestamp.now(), // Set creation timestamp
+      completed: false,
+      userId: user.uid,
+      createdAt: Timestamp.now(),
     };
 
     // Remove undefined fields before saving to Firestore

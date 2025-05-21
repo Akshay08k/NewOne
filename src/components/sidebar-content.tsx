@@ -21,6 +21,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Home, ListTodo, CalendarDays, Settings, LogOut, User, Loader2 } from "lucide-react";
 import { useAuth } from "@/context/auth-context"; // Import useAuth hook
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "./ui/skeleton";
 
 export function SidebarContent() {
   const pathname = usePathname();

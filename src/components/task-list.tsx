@@ -80,6 +80,23 @@ interface Task {
   notified?: boolean;
 }
 
+interface TaskUpdateData {
+  title: string;
+  description?: string;
+  priority: "low" | "medium" | "high";
+  deadline?: Date | Timestamp | null;
+  reminder?: Date | Timestamp | null;
+  notified?: boolean;
+}
+
+function toDateOrNull(dateOrTimestamp?: Date | Timestamp | null): Date | null {
+  if (!dateOrTimestamp) return null;
+  if (dateOrTimestamp instanceof Timestamp) {
+    return dateOrTimestamp.toDate();
+  }
+  return dateOrTimestamp;
+}
+
 export function TaskList() {
   const { user, loading: authLoading } = useAuth(); // Get user and auth loading state
   const [tasks, setTasks] = React.useState<Task[]>([]);
@@ -87,6 +104,12 @@ export function TaskList() {
   const { toast } = useToast();
   const [reminderDate, setReminderDate] = React.useState<Date>();
   const [reminderTime, setReminderTime] = React.useState<string>("09:00");
+  const [editingTask, setEditingTask] = React.useState<Task | null>(null);
+  const [editForm, setEditForm] = React.useState({
+    title: "",
+    description: "",
+    priority: "low" as "low" | "medium" | "high",
+  });
 
   // Fetch tasks from Firestore
   React.useEffect(() => {
@@ -132,7 +155,53 @@ export function TaskList() {
     return () => unsubscribe();
   }, [user, toast]); // Depend on user
 
-  // --- Handlers for Task Actions (Update Firestore) ---
+  async function handleUpdateTask(
+    taskId: string,
+    data: TaskUpdateData,
+    onSuccess?: () => void,
+    onError?: (error: any) => void
+  ) {
+    try {
+      const taskDocRef = doc(db, "tasks", taskId);
+
+      const updateData: any = {
+        title: data.title,
+        description: data.description ?? "",
+        priority: data.priority,
+        notified: data.notified ?? false,
+        deadline: toDateOrNull(data.deadline)
+          ? Timestamp.fromDate(toDateOrNull(data.deadline)!)
+          : null,
+        reminder: toDateOrNull(data.reminder)
+          ? Timestamp.fromDate(toDateOrNull(data.reminder)!)
+          : null,
+      };
+
+      // Remove keys with null/undefined
+      Object.keys(updateData).forEach((key) => {
+        if (updateData[key] === null || updateData[key] === undefined) {
+          delete updateData[key];
+        }
+      });
+
+      await updateDoc(taskDocRef, updateData);
+
+      toast({
+        title: "Task Updated",
+        description: `Task "${data.title}" updated successfully!`,
+      });
+
+      if (onSuccess) onSuccess();
+    } catch (error) {
+      console.error("Failed to update task:", error);
+      toast({
+        title: "Update Failed",
+        description: "Could not update task. Please try again.",
+        variant: "destructive",
+      });
+      if (onError) onError(error);
+    }
+  }
 
   const handleToggleComplete = async (taskId: string) => {
     const taskRef = doc(db, "tasks", taskId);
@@ -278,6 +347,68 @@ export function TaskList() {
 
   return (
     <Card>
+      {editingTask && (
+        <AlertDialog
+          open={!!editingTask}
+          onOpenChange={() => setEditingTask(null)}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Edit Task</AlertDialogTitle>
+              <AlertDialogDescription>
+                Update your task details below.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+
+            <div className="space-y-3">
+              <Input
+                value={editForm.title}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, title: e.target.value })
+                }
+                placeholder="Title"
+              />
+              <Input
+                value={editForm.description}
+                onChange={(e) =>
+                  setEditForm({ ...editForm, description: e.target.value })
+                }
+                placeholder="Description"
+              />
+              <select
+                value={editForm.priority}
+                onChange={(e) =>
+                  setEditForm({
+                    ...editForm,
+                    priority: e.target.value as "low" | "medium" | "high",
+                  })
+                }
+                className="w-full rounded-md border px-2 py-1"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => setEditingTask(null)}>
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  handleUpdateTask(editingTask.id, editForm, () =>
+                    setEditingTask(null)
+                  );
+                }}
+              >
+                Save Changes
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
       <CardHeader>
         <CardTitle>Tasks</CardTitle>
         <CardDescription>Manage your upcoming tasks.</CardDescription>
@@ -419,20 +550,24 @@ export function TaskList() {
                     <TableCell className="text-right space-x-1">
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          {/* TODO: Implement Edit Functionality */}
                           <Button
                             variant="ghost"
                             size="icon"
-                            aria-label="Edit Task"
-                            disabled={
-                              task.completed || true /* Disable edit for now */
-                            }
+                            onClick={() => {
+                              setEditingTask(task);
+                              setEditForm({
+                                title: task.title,
+                                description: task.description || "",
+                                priority: task.priority,
+                              });
+                            }}
+                            disabled={task.completed}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
                         </TooltipTrigger>
                         <TooltipContent>
-                          <p>Edit Task (Coming Soon)</p>
+                          <p>Edit Task</p>
                         </TooltipContent>
                       </Tooltip>
 
