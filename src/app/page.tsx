@@ -17,29 +17,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 export default function Home() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [isAndroid, setIsAndroid] = React.useState(false);
 
   React.useEffect(() => {
-    // Detect Android user agent
-    if (typeof window !== "undefined") {
-      const userAgent = navigator.userAgent || navigator.vendor;
-      //do same for ios
-
-      if (/android/i.test(userAgent) || /iphone/i.test(userAgent)) {
-        setIsAndroid(true);
-      }
-    }
-  }, []);
-
-  React.useEffect(() => {
-    // Redirect to login if not logged in and not loading
     if (!loading && !user) {
       router.push("/login");
     }
   }, [user, loading, router]);
 
   if (loading || !user) {
-    // Show loading indicator or handle redirection
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -47,22 +32,6 @@ export default function Home() {
     );
   }
 
-  if (isAndroid) {
-    return (
-      <div className="flex items-center justify-center min-h-screen p-6 text-center">
-        <Card className="max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle>Coming soon on Android/iOS</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p>This app is currently available only on desktop devices.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // If logged in and not Android, show the dashboard content
   return (
     <SidebarProvider>
       <Sidebar>

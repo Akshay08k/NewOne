@@ -18,7 +18,10 @@ import {
   Calendar as CalendarIcon,
   Bell,
   Loader2,
-} from "lucide-react"; // Added Loader2
+  MoreVertical,
+  Clock,
+  AlertCircle,
+} from "lucide-react";
 import { format, toDate } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -30,7 +33,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
   Tooltip,
@@ -43,8 +45,24 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   Card,
   CardContent,
@@ -52,8 +70,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useAuth } from "@/context/auth-context"; // Import useAuth
-import { db } from "@/lib/firebase/config"; // Import db instance
+import { useAuth } from "@/context/auth-context";
+import { db } from "@/lib/firebase/config";
 import {
   collection,
   query,
@@ -62,21 +80,21 @@ import {
   doc,
   updateDoc,
   deleteDoc,
-  Timestamp, // Import Timestamp
+  Timestamp,
   orderBy,
 } from "firebase/firestore";
 
 // Define Task interface matching Firestore structure
 interface Task {
-  id: string; // Document ID from Firestore
+  id: string;
   title: string;
   description?: string;
   priority: "low" | "medium" | "high";
-  deadline?: Timestamp; // Use Firestore Timestamp
+  deadline?: Timestamp;
   completed: boolean;
-  reminder?: Timestamp; // Use Firestore Timestamp
-  userId: string; // To associate tasks with users
-  createdAt: Timestamp; // Track creation time
+  reminder?: Timestamp;
+  userId: string;
+  createdAt: Timestamp;
   notified?: boolean;
 }
 
@@ -98,13 +116,14 @@ function toDateOrNull(dateOrTimestamp?: Date | Timestamp | null): Date | null {
 }
 
 export function TaskList() {
-  const { user, loading: authLoading } = useAuth(); // Get user and auth loading state
+  const { user, loading: authLoading } = useAuth();
   const [tasks, setTasks] = React.useState<Task[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true); // Loading state for tasks
+  const [isLoading, setIsLoading] = React.useState(true);
   const { toast } = useToast();
   const [reminderDate, setReminderDate] = React.useState<Date>();
   const [reminderTime, setReminderTime] = React.useState<string>("09:00");
   const [editingTask, setEditingTask] = React.useState<Task | null>(null);
+  const [taskToDelete, setTaskToDelete] = React.useState<Task | null>(null);
   const [editForm, setEditForm] = React.useState({
     title: "",
     description: "",
@@ -114,8 +133,8 @@ export function TaskList() {
   // Fetch tasks from Firestore
   React.useEffect(() => {
     if (!user) {
-      setIsLoading(false); // Stop loading if no user
-      setTasks([]); // Clear tasks if no user
+      setIsLoading(false);
+      setTasks([]);
       return;
     }
 
@@ -125,7 +144,7 @@ export function TaskList() {
       tasksColRef,
       where("userId", "==", user.uid),
       orderBy("createdAt", "desc")
-    ); // Filter by userId and order
+    );
 
     const unsubscribe = onSnapshot(
       q,
@@ -136,7 +155,7 @@ export function TaskList() {
               id: doc.id,
               ...doc.data(),
             } as Task)
-        ); // Map Firestore data to Task interface
+        );
         setTasks(fetchedTasks);
         setIsLoading(false);
       },
@@ -151,9 +170,8 @@ export function TaskList() {
       }
     );
 
-    // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, [user, toast]); // Depend on user
+  }, [user, toast]);
 
   async function handleUpdateTask(
     taskId: string,
@@ -177,7 +195,6 @@ export function TaskList() {
           : null,
       };
 
-      // Remove keys with null/undefined
       Object.keys(updateData).forEach((key) => {
         if (updateData[key] === null || updateData[key] === undefined) {
           delete updateData[key];
@@ -236,8 +253,9 @@ export function TaskList() {
       toast({
         title: "Task Deleted",
         description: `Task "${taskToDelete.title}" has been removed.`,
-        variant: "destructive", // Keep variant destructive for deletion confirmation
+        variant: "destructive",
       });
+      setTaskToDelete(null);
     } catch (error) {
       console.error("Error deleting task: ", error);
       toast({
@@ -264,7 +282,7 @@ export function TaskList() {
     const [hours, minutes] = reminderTime.split(":").map(Number);
     const reminderDateTime = new Date(reminderDate);
     reminderDateTime.setHours(hours, minutes, 0, 0);
-    const reminderTimestamp = Timestamp.fromDate(reminderDateTime); // Convert to Firestore Timestamp
+    const reminderTimestamp = Timestamp.fromDate(reminderDateTime);
 
     try {
       await updateDoc(taskRef, { reminder: reminderTimestamp });
@@ -275,19 +293,8 @@ export function TaskList() {
           "PPP p"
         )}.`,
       });
-      // Reset picker state - you might need to manage Popover open state manually
       setReminderDate(undefined);
       setReminderTime("09:00");
-      // Basic notification simulation (keep or remove based on preference)
-      const now = new Date();
-      const timeUntilReminder = reminderDateTime.getTime() - now.getTime();
-      if (timeUntilReminder > 0) {
-        setTimeout(() => {
-          alert(`Reminder: Task "${task?.title}" is due soon!`);
-        }, timeUntilReminder);
-      } else {
-        console.warn(`Reminder time for task "${task?.title}" is in the past.`);
-      }
     } catch (error) {
       console.error("Error setting reminder: ", error);
       toast({
@@ -297,8 +304,6 @@ export function TaskList() {
       });
     }
   };
-
-  // --- Utility Functions ---
 
   const getPriorityBadgeVariant = (
     priority: "low" | "medium" | "high"
@@ -315,29 +320,24 @@ export function TaskList() {
     }
   };
 
-  const getPriorityTextColor = (
-    priority: "low" | "medium" | "high"
-  ): string => {
+  const getPriorityIcon = (priority: string) => {
     switch (priority) {
-      case "low":
-        return "text-green-600 dark:text-green-400";
-      case "medium":
-        return "text-yellow-600 dark:text-yellow-400";
       case "high":
-        return "text-red-600 dark:text-red-400";
+        return <AlertCircle className="h-3 w-3" />;
+      case "medium":
+        return <Clock className="h-3 w-3" />;
       default:
-        return "";
+        return null;
     }
   };
 
-  // Convert Firestore Timestamp to Date object safely
   const formatTimestamp = (
     timestamp: Timestamp | undefined,
     formatString: string
   ): string => {
-    if (!timestamp) return "N/A"; // Or "No Date", etc.
+    if (!timestamp) return "N/A";
     try {
-      const date = timestamp.toDate(); // Convert Firestore Timestamp to JS Date
+      const date = timestamp.toDate();
       return format(date, formatString);
     } catch (error) {
       console.error("Error formatting timestamp: ", error);
@@ -345,37 +345,358 @@ export function TaskList() {
     }
   };
 
-  return (
-    <Card>
-      {editingTask && (
-        <AlertDialog
-          open={!!editingTask}
-          onOpenChange={() => setEditingTask(null)}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Edit Task</AlertDialogTitle>
-              <AlertDialogDescription>
-                Update your task details below.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
+  // Mobile Card Component
+  const MobileTaskCard = ({ task }: { task: Task }) => (
+    <Card className={`mb-3 ${task.completed ? "opacity-60" : ""}`}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex items-start space-x-3 flex-1 min-w-0">
+            <Checkbox
+              checked={task.completed}
+              onCheckedChange={() => handleToggleComplete(task.id)}
+              className="mt-1 flex-shrink-0"
+            />
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h3
+                  className={`font-medium text-sm truncate ${
+                    task.completed ? "line-through text-muted-foreground" : ""
+                  }`}
+                >
+                  {task.title}
+                </h3>
+                <Badge
+                  variant={getPriorityBadgeVariant(task.priority)}
+                  className="h-5 text-xs flex-shrink-0"
+                >
+                  <div className="flex items-center gap-1">
+                    {getPriorityIcon(task.priority)}
+                    {task.priority}
+                  </div>
+                </Badge>
+              </div>
 
-            <div className="space-y-3">
+              {task.description && (
+                <p
+                  className={`text-xs text-muted-foreground mb-2 line-clamp-2 ${
+                    task.completed ? "line-through" : ""
+                  }`}
+                >
+                  {task.description}
+                </p>
+              )}
+
+              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
+                {task.deadline && (
+                  <div className="flex items-center gap-1">
+                    <CalendarIcon className="h-3 w-3" />
+                    <span>
+                      Due: {formatTimestamp(task.deadline, "MMM d, yyyy")}
+                    </span>
+                  </div>
+                )}
+                {task.reminder && (
+                  <div className="flex items-center gap-1">
+                    <Bell className="h-3 w-3" />
+                    <span>
+                      Reminder:{" "}
+                      {formatTimestamp(task.reminder, "MMM d, h:mm a")}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 flex-shrink-0"
+              >
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() => {
+                  setEditingTask(task);
+                  setEditForm({
+                    title: task.title,
+                    description: task.description || "",
+                    priority: task.priority,
+                  });
+                }}
+                disabled={task.completed}
+              >
+                <Edit className="h-4 w-4 mr-2" />
+                Edit
+              </DropdownMenuItem>
+              {!task.reminder && (
+                <DropdownMenuItem disabled={task.completed}>
+                  <Bell className="h-4 w-4 mr-2" />
+                  Set Reminder
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => setTaskToDelete(task)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <CardTitle>Tasks</CardTitle>
+          <CardDescription>Manage your upcoming tasks.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {/* Desktop Table View */}
+          <div className="hidden lg:block">
+            <TooltipProvider>
+              <div className="min-w-[600px]">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]">Status</TableHead>
+                      <TableHead>Title</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Priority</TableHead>
+                      <TableHead>Deadline</TableHead>
+                      <TableHead>Reminder</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="h-24 text-center">
+                          <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
+                        </TableCell>
+                      </TableRow>
+                    ) : tasks.length === 0 ? (
+                      <TableRow>
+                        <TableCell
+                          colSpan={7}
+                          className="h-24 text-center text-muted-foreground"
+                        >
+                          No tasks found. Add a new task to get started!
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      tasks.map((task) => (
+                        <TableRow
+                          key={task.id}
+                          data-state={task.completed ? "completed" : ""}
+                        >
+                          <TableCell>
+                            <Checkbox
+                              checked={task.completed}
+                              onCheckedChange={() =>
+                                handleToggleComplete(task.id)
+                              }
+                            />
+                          </TableCell>
+                          <TableCell
+                            className={`font-medium ${
+                              task.completed
+                                ? "line-through text-muted-foreground"
+                                : ""
+                            }`}
+                          >
+                            {task.title}
+                          </TableCell>
+                          <TableCell
+                            className={
+                              task.completed
+                                ? "line-through text-muted-foreground"
+                                : ""
+                            }
+                          >
+                            {task.description || "-"}
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={getPriorityBadgeVariant(task.priority)}
+                            >
+                              <div className="flex items-center gap-1">
+                                {getPriorityIcon(task.priority)}
+                                {task.priority.charAt(0).toUpperCase() +
+                                  task.priority.slice(1)}
+                              </div>
+                            </Badge>
+                          </TableCell>
+                          <TableCell
+                            className={
+                              task.completed
+                                ? "line-through text-muted-foreground"
+                                : ""
+                            }
+                          >
+                            {task.deadline
+                              ? formatTimestamp(task.deadline, "PPP")
+                              : "No deadline"}
+                          </TableCell>
+                          <TableCell
+                            className={
+                              task.completed
+                                ? "line-through text-muted-foreground"
+                                : ""
+                            }
+                          >
+                            {task.reminder ? (
+                              formatTimestamp(task.reminder, "Pp")
+                            ) : (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled={task.completed}
+                                  >
+                                    <Bell className="h-4 w-4" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-4 space-y-2">
+                                  <p className="text-sm font-medium">
+                                    Set Reminder
+                                  </p>
+                                  <Calendar
+                                    mode="single"
+                                    selected={reminderDate}
+                                    onSelect={setReminderDate}
+                                    initialFocus
+                                  />
+                                  <Input
+                                    type="time"
+                                    value={reminderTime}
+                                    onChange={(e) =>
+                                      setReminderTime(e.target.value)
+                                    }
+                                  />
+                                  <Button
+                                    size="sm"
+                                    onClick={() => handleSetReminder(task.id)}
+                                    className="w-full"
+                                  >
+                                    Set
+                                  </Button>
+                                </PopoverContent>
+                              </Popover>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right space-x-1">
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setEditingTask(task);
+                                    setEditForm({
+                                      title: task.title,
+                                      description: task.description || "",
+                                      priority: task.priority,
+                                    });
+                                  }}
+                                  disabled={task.completed}
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Edit Task</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setTaskToDelete(task)}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Delete Task</TooltipContent>
+                            </Tooltip>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </TooltipProvider>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="lg:hidden">
+            {isLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : tasks.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <p>No tasks found. Add a new task to get started!</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {tasks.map((task) => (
+                  <MobileTaskCard key={task.id} task={task} />
+                ))}
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Edit Task Dialog */}
+      <Dialog open={!!editingTask} onOpenChange={() => setEditingTask(null)}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+            <DialogDescription>
+              Update your task details below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="title">Title</Label>
               <Input
+                id="title"
                 value={editForm.title}
                 onChange={(e) =>
                   setEditForm({ ...editForm, title: e.target.value })
                 }
-                placeholder="Title"
+                placeholder="Task title"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="description">Description</Label>
               <Input
+                id="description"
                 value={editForm.description}
                 onChange={(e) =>
                   setEditForm({ ...editForm, description: e.target.value })
                 }
-                placeholder="Description"
+                placeholder="Task description"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="priority">Priority</Label>
               <select
+                id="priority"
                 value={editForm.priority}
                 onChange={(e) =>
                   setEditForm({
@@ -383,238 +704,60 @@ export function TaskList() {
                     priority: e.target.value as "low" | "medium" | "high",
                   })
                 }
-                className="w-full rounded-md border px-2 py-1"
+                className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
               >
                 <option value="low">Low</option>
                 <option value="medium">Medium</option>
                 <option value="high">High</option>
               </select>
             </div>
-
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => setEditingTask(null)}>
-                Cancel
-              </AlertDialogCancel>
-              <AlertDialogAction
-                onClick={() => {
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button variant="outline" onClick={() => setEditingTask(null)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (editingTask) {
                   handleUpdateTask(editingTask.id, editForm, () =>
                     setEditingTask(null)
                   );
-                }}
-              >
-                Save Changes
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+                }
+              }}
+            >
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      <CardHeader>
-        <CardTitle>Tasks</CardTitle>
-        <CardDescription>Manage your upcoming tasks.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <TooltipProvider>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50px]">Status</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead className="hidden md:table-cell">
-                  Description
-                </TableHead>
-                <TableHead>Priority</TableHead>
-                <TableHead>Deadline</TableHead>
-                <TableHead>Reminder</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-24 text-center">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
-                  </TableCell>
-                </TableRow>
-              ) : tasks.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={7}
-                    className="h-24 text-center text-muted-foreground"
-                  >
-                    No tasks found. Add a new task to get started!
-                  </TableCell>
-                </TableRow>
-              ) : (
-                tasks.map((task) => (
-                  <TableRow
-                    key={task.id}
-                    data-state={task.completed ? "completed" : ""}
-                  >
-                    <TableCell>
-                      <Checkbox
-                        checked={task.completed}
-                        onCheckedChange={() => handleToggleComplete(task.id)}
-                        aria-label={
-                          task.completed
-                            ? "Mark as incomplete"
-                            : "Mark as complete"
-                        }
-                      />
-                    </TableCell>
-                    <TableCell
-                      className={`font-medium ${
-                        task.completed
-                          ? "line-through text-muted-foreground"
-                          : ""
-                      }`}
-                    >
-                      {task.title}
-                    </TableCell>
-                    <TableCell
-                      className={`hidden md:table-cell ${
-                        task.completed
-                          ? "line-through text-muted-foreground"
-                          : ""
-                      }`}
-                    >
-                      {task.description || "-"}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={getPriorityBadgeVariant(task.priority)}
-                        className={`${getPriorityTextColor(task.priority)}`}
-                      >
-                        {task.priority.charAt(0).toUpperCase() +
-                          task.priority.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell
-                      className={
-                        task.completed
-                          ? "line-through text-muted-foreground"
-                          : ""
-                      }
-                    >
-                      {/* Use formatTimestamp helper */}
-                      {task.deadline
-                        ? formatTimestamp(task.deadline, "PPP")
-                        : "No deadline"}
-                    </TableCell>
-                    <TableCell
-                      className={
-                        task.completed
-                          ? "line-through text-muted-foreground"
-                          : ""
-                      }
-                    >
-                      {/* Use formatTimestamp helper */}
-                      {task.reminder ? (
-                        formatTimestamp(task.reminder, "Pp")
-                      ) : (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              aria-label="Set Reminder"
-                              disabled={task.completed}
-                            >
-                              <Bell className="h-4 w-4" />
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-auto p-4 space-y-2">
-                            <p className="text-sm font-medium">Set Reminder</p>
-                            <Calendar
-                              mode="single"
-                              selected={reminderDate}
-                              onSelect={setReminderDate}
-                              initialFocus
-                            />
-                            <Input
-                              type="time"
-                              value={reminderTime}
-                              onChange={(e) => setReminderTime(e.target.value)}
-                            />
-                            <Button
-                              size="sm"
-                              onClick={() => handleSetReminder(task.id)}
-                              className="w-full"
-                            >
-                              Set
-                            </Button>
-                          </PopoverContent>
-                        </Popover>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right space-x-1">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setEditingTask(task);
-                              setEditForm({
-                                title: task.title,
-                                description: task.description || "",
-                                priority: task.priority,
-                              });
-                            }}
-                            disabled={task.completed}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>Edit Task</p>
-                        </TooltipContent>
-                      </Tooltip>
-
-                      <AlertDialog>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                aria-label="Delete Task"
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </AlertDialogTrigger>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>Delete Task</p>
-                          </TooltipContent>
-                        </Tooltip>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. This will
-                              permanently delete the task "{task.title}".
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDeleteTask(task.id)}
-                              className="bg-destructive hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TooltipProvider>
-      </CardContent>
-    </Card>
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog
+        open={!!taskToDelete}
+        onOpenChange={() => setTaskToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the
+              task "{taskToDelete?.title}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setTaskToDelete(null)}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => taskToDelete && handleDeleteTask(taskToDelete.id)}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
+
